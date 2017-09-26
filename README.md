@@ -5,7 +5,7 @@ Small library to help handle Azure Service Bus messages
 
 ## Installation
 
-  `npm install @josemato/service-bus-azure-watcher`
+  `npm install service-bus-azure-watcher`
 
 ## ServiceBusWatcher initialization
 
