@@ -5,6 +5,16 @@
   },
   "version": "1.0.3",
   "description": "Read azure bus service queue messages to be processed by an user",
+  "keywords": [
+    "azure",
+    "service bus",
+    "queue",
+    "watcher"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/josemato/service-bus-azure-watcher"
+  },
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

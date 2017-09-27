@@ -60,7 +60,7 @@ const CONCURRENCY = 50;
 
 const retryOperations = new azure.ExponentialRetryPolicyFilter();
 const serviceBus = azure.createServiceBusService(AZURE_SERVICE_BUS_KEY).withFilter(retryOperations);
-const myServiceBusWather = new ServiceBusAzureWatcher(serviceBus, QUEUE_NAME, CONCURRENCY);
+const myServiceBusWatcher = new ServiceBusAzureWatcher(serviceBus, QUEUE_NAME, CONCURRENCY);
 
 /**
 * User function that process a message. When finish, it's necessary to notify "done" function.
@@ -69,7 +69,7 @@ const myServiceBusWather = new ServiceBusAzureWatcher(serviceBus, QUEUE_NAME, CO
 * @param {Function} done callback function to notify service bus
 *  watcher that user finished to process the message
 * */
-myServiceBusWather.onMessage((message, done) => {
+myServiceBusWatcher.onMessage((message, done) => {
     console.log('received message', message.body);
     done();
     // if user operation failed, you need to call done('some problem') or done(new Error('some problem'))
@@ -79,9 +79,9 @@ myServiceBusWather.onMessage((message, done) => {
 * @param {Object} err This error is an instace of ErrorMessage:
 *  stack, error message, status and queueMessage (undefined by default) are available
 * */
-myServiceBusWather.onError((err) => {
+myServiceBusWatcher.onError((err) => {
     console.log('user function onError', err.message, err.status, err.queueMessage);
 });
 
-myServiceBusWather.start();
+myServiceBusWatcher.start();
 ````
