@@ -41,6 +41,7 @@ class DebugMessage {
 const ON_ERROR_READ_MESSAGE_FROM_AZURE = 'on_error_read_message_from_azure';
 const QUEUE_NOT_FOUND = 'queue_not_found';
 const ON_UNLOCK_MESSAGE_FROM_AZURE = 'on_unlock_message_from_azure';
+const ON_REMOVE_MESSAGE_FROM_AZURE = 'on_remove_unlock_message_from_azure';
 const ON_UNLOCK_MESSAGE_FROM_AZURE_MAX_ATTEMPTS = 'on_unlock_message_from_azure_max_attempts';
 const ON_DELETE_MESSAGE_FROM_AZURE_MAX_ATTEMPTS = 'on_delete_message_from_azure_max_attempts';
 
@@ -105,6 +106,12 @@ class ServiceBusPrivate {
   unlockMessage(message) {
     return new Promise((resolve, reject) => {
       this.serviceBus.unlockMessage(message, (err, data) => {
+        if (err !== null && typeof err === 'object') {
+          if (err.code === '404') {
+            return reject(new ErrorMessage(err, ON_UNLOCK_MESSAGE_FROM_AZURE, message));
+          }
+        }
+
         if (err) {
           return reject(err);
         }
@@ -117,6 +124,12 @@ class ServiceBusPrivate {
   removeMessage(message) {
     return new Promise((resolve, reject) => {
       this.serviceBus.deleteMessage(message, (err, data) => {
+        if (err !== null && typeof err === 'object') {
+          if (err.code === '404') {
+            return reject(new ErrorMessage(err, ON_REMOVE_MESSAGE_FROM_AZURE, message));
+          }
+        }
+
         if (err) {
           return reject(err);
         }
@@ -289,9 +302,17 @@ class ServiceBusAzureWatcher {
           if (err) {
             return promiseRetry((retry, attempts) => {
               this.myEmitter.emit('debug', new DebugMessage('retry unlockMessage'));
-              return this.sbPrivate.unlockMessage(originalMessage).catch((err) => {
-                this.myEmitter.emit('error', new ErrorMessage(err, ON_UNLOCK_MESSAGE_FROM_AZURE, message));
-                retry(err);
+              return this.sbPrivate.unlockMessage(originalMessage).catch((err) => {å
+                /**
+                 * avoid retry if is a non recoverable error
+                 * like unlock invalid or message doesnt exist
+                 * */
+                if (err instanceof ErrorMessage) {
+                  this.myEmitter.emit('error', err);
+                  return Promise.resolve();
+                }
+
+                return retry(err);
               });
             }, optionRetryPromise).then(() => {
               this.readOneMessage();
@@ -302,9 +323,16 @@ class ServiceBusAzureWatcher {
           }
 
           return promiseRetry((retry, attempts) => {
-            this.sbPrivate.removeMessage(originalMessage).then((data) => {
+            return this.sbPrivate.removeMessage(originalMessage).then((data) => {
               this.myEmitter.emit('debug', new DebugMessage('messageDeleted', originalMessage));
-              this.readOneMessage();
+            }).catch((err) => {
+              // avoid retry if is a well know error
+              if (err instanceof ErrorMessage) {
+                this.myEmitter.emit('error', err);
+                return Promise.resolve();
+              }
+
+              return retry(err);
             });
           }, optionRetryPromise).then(() => {
             this.readOneMessage();

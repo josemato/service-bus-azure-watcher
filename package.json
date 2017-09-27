@@ -4,7 +4,7 @@
     "node": ">=6.11.0"
   },
   "version": "1.0.2",
-  "description": "read azure bus service messages to be processed by an user",
+  "description": "Read azure bus service queue messages to be processed by an user",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
