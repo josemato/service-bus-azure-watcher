@@ -7,12 +7,12 @@ This library retrieves a max number of messages (specified in concurrency variab
 ## How this library works
 
 1. Read message from Azure Service Bus
-2. Pass message to user callback function
-3. User function is being executed and can goes well or fail
-    3.1 user function calls done() to indicate a successful operation (processing the message)
-    3.2 user function calls done(err) to indicate a failure operation
-4. If user function goes well, the library will delete the message
-5. If user function goes wrong, the library will release the message to be available later
+1. Pass message to user callback function
+1. User function is being executed and can goes well or fail
+    1. user function calls done() to indicate a successful operation (processing the message)
+    1. user function calls done(err) to indicate a failure operation
+1. If user function goes well, the library will delete the message
+1. If user function goes wrong, the library will release the message to be available later
 
 Some problems can occur in the process of retrieve message, delete message or release message (unlock):
 * Unexpected but common errors: specially network problems like unreach server, connection reset, etc

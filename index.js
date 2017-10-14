@@ -302,7 +302,7 @@ class ServiceBusAzureWatcher {
           if (err) {
             return promiseRetry((retry, attempts) => {
               this.myEmitter.emit('debug', new DebugMessage('retry unlockMessage'));
-              return this.sbPrivate.unlockMessage(originalMessage).catch((err) => {å
+              return this.sbPrivate.unlockMessage(originalMessage).catch((err) => {
                 /**
                  * avoid retry if is a non recoverable error
                  * like unlock invalid or message doesnt exist
