@@ -158,6 +158,7 @@ class ServiceBusAzureWatcher {
     this.maxThreadsCreated = 0;
 
     // bind methods
+    this.getWatcherInfo = this.getWatcherInfo.bind(this);
     this.start = this.start.bind(this);
     this.startReceivingMessages = this.startReceivingMessages.bind(this);
     this.checkConcurrency = this.checkConcurrency.bind(this);
@@ -165,6 +166,19 @@ class ServiceBusAzureWatcher {
     this.onMessage = this.onMessage.bind(this);
     this.onError = this.onError.bind(this);
     this.onDebug = this.onDebug.bind(this);
+  }
+
+  getWatcherInfo() {
+    //return new Promise((resolve, reject) => {
+      return ({
+        isStartRunning: this.isStartRunning,
+        queueName: this.queueName,
+        concurrency: this.concurrency,
+        // queueData: this.queueData,
+        maxThreadsCreated: this.maxThreadsCreated,
+        currentMessagesInQueue: this.queueData ? (parseInt(this.queueData.CountDetails['d2p1:ActiveMessageCount'], 10) || 0) : -1,
+      });
+    // });
   }
 
   /**
@@ -207,6 +221,7 @@ class ServiceBusAzureWatcher {
           return this.myEmitter.emit('error', new ErrorMessage(`queue not found: ${this.queueName}`, QUEUE_NOT_FOUND, null));
         }
 
+        this.queueData = queueData;
         const currentMessagesInQueue = parseInt(queueData.CountDetails['d2p1:ActiveMessageCount'], 10) || 0;
         if (currentMessagesInQueue === 0) {
           setTimeout(() => { this.checkConcurrency(); }, CHECK_CONCURRENCY_TIMER);
@@ -265,7 +280,7 @@ class ServiceBusAzureWatcher {
      * dont create more requests than messages in the queue
      */
     let maxCallsInvoked = -1;
-    while (++ maxCallsInvoked < this.concurrency && maxCallsInvoked < currentMessagesInQueue) {
+    while (++ maxCallsInvoked < this.concurrency && maxCallsInvoked < currentMessagesInQueue && this.maxThreadsCreated < this.concurrency) {
       this.maxThreadsCreated = this.maxThreadsCreated + 1;
       delay = i + 25;
 
@@ -293,7 +308,10 @@ class ServiceBusAzureWatcher {
 
       if (err) {
         this.myEmitter.emit('error', new ErrorMessage(err, ON_ERROR_READ_MESSAGE_FROM_AZURE, message));
-        return null;
+        setTimeout(() => {
+          return this.readOneMessage();
+        }, 500);
+        return;
       }
 
       // we can pass data to user

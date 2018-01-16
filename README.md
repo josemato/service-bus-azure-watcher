@@ -4,6 +4,11 @@ Service Bus Azure Watcher
 Small library to help handle Azure Service Bus queue messages using azure peek message strategy.
 This library retrieves a max number of messages (specified in concurrency variable) and perform next flow:
 
+# Changelog
+## Version 1.0.6
+1. Fix bug to avoid non messages comsuption when Azure Service Bus has connection problems (connection reset, timeout, etc)
+2. Added method getWatcherInfo to retrieve util watcher information for debug purposes
+
 ## How this library works
 
 1. Read message from Azure Service Bus
