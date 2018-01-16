@@ -322,7 +322,7 @@ class ServiceBusAzureWatcher {
 
     this.serviceBus.receiveQueueMessage(this.queueName, { isPeekLock: true }, (err, message) => {
       this.lastReadMessageAt = Date.now();
-      this.lastReadMessageAt = message;
+      this.lastReadMessage = message;
       this.lastReadErrorMessage = err;
 
       if (err === AZURE_NO_MESSAGES) {
