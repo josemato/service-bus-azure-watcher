@@ -3,7 +3,7 @@
   "engines": {
     "node": ">=6.11.0"
   },
-  "version": "1.0.6",
+  "version": "1.0.5",
   "description": "Read azure bus service queue messages to be processed by an user",
   "keywords": [
     "azure",
