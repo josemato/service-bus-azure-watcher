@@ -13,6 +13,7 @@ class ErrorMessage extends Error {
     super(message);
     this.status = status;
     this.queueMessage = queueMessage;
+    this.originalAzureError = message;
 
     if (typeof Error.captureStackTrace === 'function') {
       Error.captureStackTrace(this, this.constructor);
@@ -44,6 +45,7 @@ const ON_UNLOCK_MESSAGE_FROM_AZURE = 'on_unlock_message_from_azure';
 const ON_REMOVE_MESSAGE_FROM_AZURE = 'on_remove_unlock_message_from_azure';
 const ON_UNLOCK_MESSAGE_FROM_AZURE_MAX_ATTEMPTS = 'on_unlock_message_from_azure_max_attempts';
 const ON_DELETE_MESSAGE_FROM_AZURE_MAX_ATTEMPTS = 'on_delete_message_from_azure_max_attempts';
+const MAX_THREADS_EXCEEDED = 'max_threads_exceeded';
 
 /**
  * Operational errors (to be used with ErrorMessage)
@@ -157,6 +159,16 @@ class ServiceBusAzureWatcher {
     this.isStartRunning = false;
     this.maxThreadsCreated = 0;
 
+    /**
+     * stats information
+     */
+    this.lastReadMessageAt = null;
+    this.lastReadMessage = null;
+    this.lastReadErrorMessage = null;
+    this.lastJobDoneAt = null;
+    this.lastJobDone = null;
+    this.lastJobErrorDone = null;
+
     // bind methods
     this.getWatcherInfo = this.getWatcherInfo.bind(this);
     this.start = this.start.bind(this);
@@ -169,16 +181,25 @@ class ServiceBusAzureWatcher {
   }
 
   getWatcherInfo() {
-    //return new Promise((resolve, reject) => {
       return ({
         isStartRunning: this.isStartRunning,
         queueName: this.queueName,
         concurrency: this.concurrency,
-        // queueData: this.queueData,
         maxThreadsCreated: this.maxThreadsCreated,
         currentMessagesInQueue: this.queueData ? (parseInt(this.queueData.CountDetails['d2p1:ActiveMessageCount'], 10) || 0) : -1,
+        history: {
+          onReadOneMessage: {
+            lastReadMessageAt: this.lastReadMessageAt,
+            lastReadMessage: this.lastReadMessage,
+            lastReadErrorMessage: this.lastReadErrorMessage,
+          },
+          onJobDone: {
+            lastJobDoneAt: this.lastJobDoneAt,
+            lastJobDone: this.lastJobDone,
+            lastJobErrorDone: this.lastJobErrorDone,
+          },
+        },
       });
-    // });
   }
 
   /**
@@ -295,10 +316,15 @@ class ServiceBusAzureWatcher {
   readOneMessage() {
     if (this.maxThreadsCreated > this.concurrency) {
       this.maxThreadsCreated = this.concurrency;
+      this.myEmitter.emit('error', new ErrorMessage(MAX_THREADS_EXCEEDED, MAX_THREADS_EXCEEDED, null));
       return;
     }
 
     this.serviceBus.receiveQueueMessage(this.queueName, { isPeekLock: true }, (err, message) => {
+      this.lastReadMessageAt = Date.now();
+      this.lastReadMessageAt = message;
+      this.lastReadErrorMessage = err;
+
       if (err === AZURE_NO_MESSAGES) {
         setTimeout(() => {
           return this.readOneMessage();
@@ -314,13 +340,26 @@ class ServiceBusAzureWatcher {
         return;
       }
 
-      // we can pass data to user
+      /**
+       * @param {Object} originalMessage Raw message received from Azure Bus Service
+       * @return {Function} done Function to be called when the user finish to process the given message to
+       *  released it (in case of error) or to delete it (in succesful case)
+       */
       const done = ((originalMessage) => {
+        this.lastJobDoneAt = Date.now();
+        this.lastJobDone = originalMessage;
+
         return (err) => {
+          /**
+           * After user finish, if exist some error sent by user, unlock the message to be processed again
+           * later by the worker (message will remain in the Azure Bus service)
+           */
           if (err) {
             return promiseRetry((retry, attempts) => {
               this.myEmitter.emit('debug', new DebugMessage('retry unlockMessage'));
               return this.sbPrivate.unlockMessage(originalMessage).catch((err) => {
+                this.lastJobErrorDone = err;
+
                 /**
                  * avoid retry if is a non recoverable error
                  * like unlock invalid or message doesnt exist
@@ -335,15 +374,21 @@ class ServiceBusAzureWatcher {
             }, optionRetryPromise).then(() => {
               this.readOneMessage();
             }, (err) => {
+              this.lastJobErrorDone = err;
               this.myEmitter.emit('error', new ErrorMessage(err, ON_UNLOCK_MESSAGE_FROM_AZURE_MAX_ATTEMPTS, message));
               this.readOneMessage();
             });
           }
 
+          /**
+           * After user finish, if doenst exist any error sent by user, delete the message
+           * from Azure Bus Service
+           */
           return promiseRetry((retry, attempts) => {
             return this.sbPrivate.removeMessage(originalMessage).then((data) => {
               this.myEmitter.emit('debug', new DebugMessage('messageDeleted', originalMessage));
             }).catch((err) => {
+              this.lastJobErrorDone = err;
               // avoid retry if is a well know error
               if (err instanceof ErrorMessage) {
                 this.myEmitter.emit('error', err);
@@ -355,6 +400,7 @@ class ServiceBusAzureWatcher {
           }, optionRetryPromise).then(() => {
             this.readOneMessage();
           }, (err) => {
+            this.lastJobErrorDone = err;
             this.myEmitter.emit('error', new ErrorMessage(err, ON_DELETE_MESSAGE_FROM_AZURE_MAX_ATTEMPTS, message));
             this.readOneMessage();
           });
