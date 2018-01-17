@@ -356,8 +356,7 @@ class ServiceBusAzureWatcher {
         this.lastJobDone = originalMessage;
 
         return (err) => {
-          this.debugDone.push('entering done');
-          this.debugDone.push(err);
+          this.debugDone.push('done');
 
           if (this.newrelic) {
             this.newrelic.noticeError(err);
@@ -368,9 +367,12 @@ class ServiceBusAzureWatcher {
            * later by the worker (message will remain in the Azure Bus service)
            */
           if (err) {
+            this.debugDone.push('done01');
             return this.sbPrivate.unlockMessage(originalMessage).then(() => {
+              this.debugDone.push('done011');
               this.readOneMessage();
             }).catch((err) => {
+              this.debugDone.push('done012');
               this.readOneMessage();
 
               if (this.newrelic) {
@@ -391,9 +393,12 @@ class ServiceBusAzureWatcher {
            * After user finish, if doenst exist any error sent by user, delete the message
            * from Azure Bus Service
            */
+          this.debugDone.push('done02');
           return this.sbPrivate.removeMessage(originalMessage).then((data) => {
+            this.debugDone.push('done021');
             this.readOneMessage();
           }).catch((err) => {
+            this.debugDone.push('done022');
             this.readOneMessage();
 
             if (this.newrelic) {
