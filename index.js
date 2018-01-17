@@ -155,6 +155,9 @@ class ServiceBusAzureWatcher {
     this.lastJobDoneAt = null;
     this.lastJobDone = null;
     this.lastJobErrorDone = null;
+    this.callsToReadOneMessage = 0;
+    this.processReadOneMessage = 0;
+    this.callToDone = 0;
 
     // bind methods
     this.getWatcherInfo = this.getWatcherInfo.bind(this);
@@ -175,6 +178,11 @@ class ServiceBusAzureWatcher {
         maxThreadsCreated: this.maxThreadsCreated || -2,
         queueData: this.queueData || null,
         currentMessagesInQueue: this.queueData ? (parseInt(this.queueData.CountDetails['d2p1:ActiveMessageCount'], 10) || 0) : -1,
+        counters: {
+          callsToReadOneMessage: this.callsToReadOneMessage,
+          processReadOneMessage: this.processReadOneMessage,
+          callToDone: this.callToDone = 0,
+        },
         history: {
           onReadOneMessage: {
             lastReadMessageAt: this.lastReadMessageAt || null,
@@ -305,11 +313,15 @@ class ServiceBusAzureWatcher {
   }
 
   readOneMessage() {
+    this.callsToReadOneMessage = this.callsToReadOneMessage + 1;
+
     if (this.maxThreadsCreated > this.concurrency) {
       this.maxThreadsCreated = this.concurrency;
       this.myEmitter.emit('error', new ErrorMessage(MAX_THREADS_EXCEEDED, MAX_THREADS_EXCEEDED, null));
       return;
     }
+
+    this.processReadOneMessage = this.processReadOneMessage + 1;
 
     this.serviceBus.receiveQueueMessage(this.queueName, { isPeekLock: true }, (err, message) => {
       this.lastReadMessageAt = Date.now();
@@ -337,6 +349,7 @@ class ServiceBusAzureWatcher {
        *  released it (in case of error) or to delete it (in succesful case)
        */
       const done = ((originalMessage) => {
+        this.callToDone = this.callToDone + 1;
         this.lastJobDoneAt = Date.now();
         this.lastJobDone = originalMessage;
 
