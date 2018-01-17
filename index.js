@@ -1,7 +1,6 @@
 'use strict';
 
 const EventEmitter = require('events');
-const promiseRetry = require('promise-retry');
 
 const CHECK_CONCURRENCY_TIMER = 10000;
 
@@ -51,19 +50,6 @@ const MAX_THREADS_EXCEEDED = 'max_threads_exceeded';
  * Operational errors (to be used with ErrorMessage)
  */
 const AZURE_NO_MESSAGES = 'No messages to receive';
-
-/**
- * The options argument is an object which maps to the retry module options:
- * retries: The maximum amount of times to retry the operation. Default is 10.
- * factor: The exponential factor to use. Default is 2.
- * minTimeout: The number of milliseconds before starting the first retry. Default is 1000.
- * maxTimeout: The maximum number of milliseconds between two retries. Default is Infinity.
- * randomize: Randomizes the timeouts by multiplying with a factor between 1 to 2. Default is false.
- */
-const optionRetryPromise = {
-  retries: 3,
-  maxTimeout: 4000,
-};
 
 /**
  * Private methods to be used inside this module
