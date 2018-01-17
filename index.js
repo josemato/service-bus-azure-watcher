@@ -132,7 +132,7 @@ class ServiceBusAzureWatcher {
   constructor(azureServiceBus, queueName, concurrency = 1) {
     this.serviceBus = azureServiceBus;
     this.queueName = queueName;
-    this.concurrency = concurrency;
+    this.concurrency = parseInt(concurrency, 10) || 1;
     this.onMessageCallback = () => {};
 
     this.queueData = null;
@@ -253,6 +253,9 @@ class ServiceBusAzureWatcher {
 
         setTimeout(() => { this.checkConcurrency(); }, CHECK_CONCURRENCY_TIMER);
       });
+    } else {
+      setTimeout(() => { this.checkConcurrency(); }, CHECK_CONCURRENCY_TIMER);
+      this.myEmitter.emit('error', 'start_error', new ErrorMessage(err, 'check_concurrency_queue_data_is_null', null));
     }
   }
 
@@ -345,6 +348,7 @@ class ServiceBusAzureWatcher {
             return this.sbPrivate.unlockMessage(originalMessage).then(() => {
               this.readOneMessage();
             }).catch((err) => {
+              this.readOneMessage();
               this.lastJobErrorDone = err;
 
               /**
@@ -354,8 +358,6 @@ class ServiceBusAzureWatcher {
               if (err instanceof ErrorMessage) {
                 this.myEmitter.emit('error', err);
               }
-
-              this.readOneMessage();
             });
           }
 
@@ -366,13 +368,12 @@ class ServiceBusAzureWatcher {
           return this.sbPrivate.removeMessage(originalMessage).then((data) => {
             this.readOneMessage();
           }).catch((err) => {
+            this.readOneMessage();
             this.lastJobErrorDone = err;
             // avoid retry if is a well know error
             if (err instanceof ErrorMessage) {
               this.myEmitter.emit('error', err);
             }
-
-            this.readOneMessage();
           });
         };
       })(message);
