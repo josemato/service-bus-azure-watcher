@@ -185,18 +185,19 @@ class ServiceBusAzureWatcher {
         isStartRunning: this.isStartRunning,
         queueName: this.queueName,
         concurrency: this.concurrency,
-        maxThreadsCreated: this.maxThreadsCreated,
+        maxThreadsCreated: this.maxThreadsCreated || -2,
+        queueData: this.queueData || null,
         currentMessagesInQueue: this.queueData ? (parseInt(this.queueData.CountDetails['d2p1:ActiveMessageCount'], 10) || 0) : -1,
         history: {
           onReadOneMessage: {
-            lastReadMessageAt: this.lastReadMessageAt,
-            lastReadMessage: this.lastReadMessage,
-            lastReadErrorMessage: this.lastReadErrorMessage,
+            lastReadMessageAt: this.lastReadMessageAt || null,
+            lastReadMessage: this.lastReadMessage || null,
+            lastReadErrorMessage: this.lastReadErrorMessage || null,
           },
           onJobDone: {
-            lastJobDoneAt: this.lastJobDoneAt,
-            lastJobDone: this.lastJobDone,
-            lastJobErrorDone: this.lastJobErrorDone,
+            lastJobDoneAt: this.lastJobDoneAt || null,
+            lastJobDone: this.lastJobDone || null,
+            lastJobErrorDone: this.lastJobErrorDone || null,
           },
         },
       });
