@@ -129,12 +129,13 @@ class ServiceBusPrivate {
 }
 
 class ServiceBusAzureWatcher {
-  constructor(azureServiceBus, queueName, concurrency = 1) {
+  constructor(azureServiceBus, queueName, concurrency = 1, newrelic = null) {
     this.serviceBus = azureServiceBus;
     this.queueName = queueName;
     this.concurrency = parseInt(concurrency, 10) || 1;
     this.onMessageCallback = () => {};
 
+    this.newrelic = newrelic;
     this.queueData = null;
     this.myEmitter = new EventEmitter();
     this.sbPrivate = new ServiceBusPrivate(this.serviceBus);
@@ -340,6 +341,10 @@ class ServiceBusAzureWatcher {
         this.lastJobDone = originalMessage;
 
         return (err) => {
+          if (this.newrelic) {
+            this.newrelic.noticeError(err);
+          }
+
           /**
            * After user finish, if exist some error sent by user, unlock the message to be processed again
            * later by the worker (message will remain in the Azure Bus service)
@@ -350,6 +355,10 @@ class ServiceBusAzureWatcher {
             }).catch((err) => {
               this.readOneMessage();
               this.lastJobErrorDone = err;
+
+              if (this.newrelic) {
+                this.newrelic.noticeError(err);
+              }
 
               /**
                * avoid retry if is a non recoverable error
@@ -370,6 +379,11 @@ class ServiceBusAzureWatcher {
           }).catch((err) => {
             this.readOneMessage();
             this.lastJobErrorDone = err;
+
+            if (this.newrelic) {
+              this.newrelic.noticeError(err);
+            }
+
             // avoid retry if is a well know error
             if (err instanceof ErrorMessage) {
               this.myEmitter.emit('error', err);
