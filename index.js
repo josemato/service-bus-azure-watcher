@@ -181,7 +181,7 @@ class ServiceBusAzureWatcher {
         counters: {
           callsToReadOneMessage: this.callsToReadOneMessage,
           processReadOneMessage: this.processReadOneMessage,
-          callToDone: this.callToDone = 0,
+          callToDone: this.callToDone,
         },
         history: {
           onReadOneMessage: {
