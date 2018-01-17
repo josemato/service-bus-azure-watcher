@@ -158,6 +158,7 @@ class ServiceBusAzureWatcher {
     this.callsToReadOneMessage = 0;
     this.processReadOneMessage = 0;
     this.callToDone = 0;
+    this.debugDone = [];
 
     // bind methods
     this.getWatcherInfo = this.getWatcherInfo.bind(this);
@@ -182,6 +183,7 @@ class ServiceBusAzureWatcher {
           callsToReadOneMessage: this.callsToReadOneMessage,
           processReadOneMessage: this.processReadOneMessage,
           callToDone: this.callToDone,
+          debugDone: this.debugDone,
         },
         history: {
           onReadOneMessage: {
@@ -354,6 +356,9 @@ class ServiceBusAzureWatcher {
         this.lastJobDone = originalMessage;
 
         return (err) => {
+          this.debugDone.push('entering done');
+          this.debugDone.push(err);
+
           if (this.newrelic) {
             this.newrelic.noticeError(err);
           }
@@ -367,7 +372,6 @@ class ServiceBusAzureWatcher {
               this.readOneMessage();
             }).catch((err) => {
               this.readOneMessage();
-              this.lastJobErrorDone = err;
 
               if (this.newrelic) {
                 this.newrelic.noticeError(err);
@@ -391,7 +395,6 @@ class ServiceBusAzureWatcher {
             this.readOneMessage();
           }).catch((err) => {
             this.readOneMessage();
-            this.lastJobErrorDone = err;
 
             if (this.newrelic) {
               this.newrelic.noticeError(err);
