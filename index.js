@@ -356,27 +356,19 @@ class ServiceBusAzureWatcher {
            * later by the worker (message will remain in the Azure Bus service)
            */
           if (err) {
-            return promiseRetry((retry, attempts) => {
-              this.myEmitter.emit('debug', new DebugMessage('retry unlockMessage'));
-              return this.sbPrivate.unlockMessage(originalMessage).catch((err) => {
-                this.lastJobErrorDone = err;
-
-                /**
-                 * avoid retry if is a non recoverable error
-                 * like unlock invalid or message doesnt exist
-                 * */
-                if (err instanceof ErrorMessage) {
-                  this.myEmitter.emit('error', err);
-                  return Promise.resolve();
-                }
-
-                return retry(err);
-              });
-            }, optionRetryPromise).then(() => {
+            return this.sbPrivate.unlockMessage(originalMessage).then(() => {
               this.readOneMessage();
-            }, (err) => {
+            }).catch((err) => {
               this.lastJobErrorDone = err;
-              this.myEmitter.emit('error', new ErrorMessage(err, ON_UNLOCK_MESSAGE_FROM_AZURE_MAX_ATTEMPTS, message));
+
+              /**
+               * avoid retry if is a non recoverable error
+               * like unlock invalid or message doesnt exist
+               * */
+              if (err instanceof ErrorMessage) {
+                this.myEmitter.emit('error', err);
+              }
+
               this.readOneMessage();
             });
           }
@@ -385,24 +377,15 @@ class ServiceBusAzureWatcher {
            * After user finish, if doenst exist any error sent by user, delete the message
            * from Azure Bus Service
            */
-          return promiseRetry((retry, attempts) => {
-            return this.sbPrivate.removeMessage(originalMessage).then((data) => {
-              this.myEmitter.emit('debug', new DebugMessage('messageDeleted', originalMessage));
-            }).catch((err) => {
-              this.lastJobErrorDone = err;
-              // avoid retry if is a well know error
-              if (err instanceof ErrorMessage) {
-                this.myEmitter.emit('error', err);
-                return Promise.resolve();
-              }
-
-              return retry(err);
-            });
-          }, optionRetryPromise).then(() => {
+          return this.sbPrivate.removeMessage(originalMessage).then((data) => {
             this.readOneMessage();
-          }, (err) => {
+          }).catch((err) => {
             this.lastJobErrorDone = err;
-            this.myEmitter.emit('error', new ErrorMessage(err, ON_DELETE_MESSAGE_FROM_AZURE_MAX_ATTEMPTS, message));
+            // avoid retry if is a well know error
+            if (err instanceof ErrorMessage) {
+              this.myEmitter.emit('error', err);
+            }
+
             this.readOneMessage();
           });
         };
